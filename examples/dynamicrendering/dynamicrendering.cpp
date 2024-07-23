@@ -123,6 +123,59 @@ public:
 				VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
 				VkImageSubresourceRange{ VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, 0, 1, 0, 1 });
 
+			//Calling a begin-end on a dynamic renderpass with only a depth-stencil attachment, and then a begin-end on a dynamic renderpass with only a single color attachment results in 
+			// a crash in igvk64.dll (Environment: windows 10, GPU: intel hd graphics 630, Driver version: 31.0.101.2128)
+
+			{
+				//This code block adds an empty depth only renderpass. Subsequent dynamic renderpass begin calls will crash in the intel driver.
+
+				VkRenderingAttachmentInfoKHR depthStencilAttachment{};
+				depthStencilAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+				depthStencilAttachment.imageView = depthStencil.view;
+				depthStencilAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+				depthStencilAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+				depthStencilAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+				depthStencilAttachment.clearValue.depthStencil = { 1.0f,  0 };
+
+				VkRenderingInfoKHR renderingInfo_test_depthonly_pass{};
+				renderingInfo_test_depthonly_pass.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+				renderingInfo_test_depthonly_pass.renderArea = { 0, 0, width, height };
+				renderingInfo_test_depthonly_pass.layerCount = 1;
+				renderingInfo_test_depthonly_pass.colorAttachmentCount = 0;
+				renderingInfo_test_depthonly_pass.pColorAttachments = nullptr;
+				renderingInfo_test_depthonly_pass.pDepthAttachment = &depthStencilAttachment;
+				renderingInfo_test_depthonly_pass.pStencilAttachment = &depthStencilAttachment;
+
+				vkCmdBeginRenderingKHR(drawCmdBuffers[i], &renderingInfo_test_depthonly_pass);
+				// do nothing
+				vkCmdEndRenderingKHR(drawCmdBuffers[i]);
+			}
+
+			{
+				//This code block adds an empty color only renderpass. Subsequent dynamic renderpass begin calls will crash in the intel driver.
+
+				VkRenderingAttachmentInfoKHR colorAttachment{};
+				colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+				colorAttachment.imageView = swapChain.buffers[i].view;
+				colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+				colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+				colorAttachment.clearValue.color = { 0.0f,0.0f,0.0f,0.0f };
+
+				VkRenderingInfoKHR renderingInfo_test_coloronly_pass{};
+				renderingInfo_test_coloronly_pass.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+				renderingInfo_test_coloronly_pass.renderArea = { 0, 0, width, height };
+				renderingInfo_test_coloronly_pass.layerCount = 1;
+				renderingInfo_test_coloronly_pass.colorAttachmentCount = 1;
+				renderingInfo_test_coloronly_pass.pColorAttachments = &colorAttachment;
+				renderingInfo_test_coloronly_pass.pDepthAttachment = nullptr;
+				renderingInfo_test_coloronly_pass.pStencilAttachment = nullptr;
+
+				vkCmdBeginRenderingKHR(drawCmdBuffers[i], &renderingInfo_test_coloronly_pass);
+				// do nothing
+				vkCmdEndRenderingKHR(drawCmdBuffers[i]);
+			}
+
 			// New structures are used to define the attachments used in dynamic rendering
 			VkRenderingAttachmentInfoKHR colorAttachment{};
 			colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
